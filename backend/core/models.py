@@ -69,3 +69,11 @@ class OrderItem(models.Model):
 
     def __str__(self):
         return f"{self.book.title} (x{self.quantity})"
+
+class SearchHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="search_history")
+    query = models.CharField(max_length=255)
+    search_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.query + " by " + self.user.username + " on " + str(self.search_date)
