@@ -1,4 +1,4 @@
-# 📚 BookStore API
+# 📚 Bookify
 
 A simple Django + React BookStore project  
 This project is designed for **practicing software testing** in Python — including unit, integration, functional, regression, smoke, and API testing.
