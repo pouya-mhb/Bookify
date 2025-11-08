@@ -32,8 +32,8 @@ This project is designed for **practicing software testing** in Python — inclu
 
 ```bash
 # Clone the repo
-git clone https://github.com/YOUR_USERNAME/bookstore-api.git
-cd bookstore-api
+git clone https://github.com/pouya-mhb/Bookify.git
+cd Bookify
 
 # Create virtual environment
 python -m venv venv
