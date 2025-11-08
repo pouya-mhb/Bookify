@@ -1,7 +1,7 @@
 from datetime import datetime
 import requests
 from rest_framework.decorators import api_view
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, status, filters, serializers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
@@ -50,17 +50,22 @@ class CartItemViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         # Users can only see their own cart items
-        cart, created = Cart.objects.get_or_create(user=self.request.user)
+        cart = self.get_user_cart()
         return CartItem.objects.filter(cart=cart)
 
-    def perform_create(self, serializer):
+    def get_user_cart(self):
+        """Get or create cart for the current user"""
         cart, created = Cart.objects.get_or_create(user=self.request.user)
+        return cart
+
+    def perform_create(self, serializer):
+        cart = self.get_user_cart()
         book = serializer.validated_data['book']
         quantity = serializer.validated_data['quantity']
 
         # Check if book is in stock
         if book.stock < quantity:
-            raise self.serializers.ValidationError({
+            raise serializers.ValidationError({
                 'error': f'Only {book.stock} items available in stock'
             })
 
@@ -75,7 +80,7 @@ class CartItemViewSet(viewsets.ModelViewSet):
             # Update quantity if item already exists
             cart_item.quantity += quantity
             if cart_item.quantity > book.stock:
-                raise self.serializers.ValidationError({
+                raise serializers.ValidationError({
                     'error': f'Cannot add more than {book.stock} items'
                 })
             cart_item.save()
@@ -94,7 +99,7 @@ class CartItemViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def clear_cart(self, request):
-        cart, created = Cart.objects.get_or_create(user=request.user)
+        cart = self.get_user_cart()
         cart.items.all().delete()
         return Response({'message': 'Cart cleared successfully'})
 

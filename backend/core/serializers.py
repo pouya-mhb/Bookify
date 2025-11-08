@@ -21,11 +21,23 @@ class BookSerializer(serializers.ModelSerializer):
 
 class CartItemSerializer(serializers.ModelSerializer):
     book = BookSerializer(read_only=True)
-    book_id = serializers.PrimaryKeyRelatedField(queryset=Book.objects.all(), source='book', write_only=True)
-    total_price = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    book_id = serializers.PrimaryKeyRelatedField(
+        queryset=Book.objects.all(),
+        source='book',
+        write_only=True
+    )
+    total_price = serializers.ReadOnlyField()
+
     class Meta:
         model = CartItem
-        fields = ['cart', 'book', 'quantity', 'book_id', 'total_price']
+        fields = ['id', 'book', 'book_id', 'quantity', 'total_price']
+        read_only_fields = ['cart']  # Make cart read-only
+
+    def create(self, validated_data):
+        # Get the cart from the context (set by the view)
+        cart = self.context['request'].cart
+        validated_data['cart'] = cart
+        return super().create(validated_data)
 
 class CartSerializer(serializers.ModelSerializer):
     items = CartItemSerializer(many=True, source='cartitem_set', read_only=True)
