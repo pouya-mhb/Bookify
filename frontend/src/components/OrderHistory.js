@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { orderAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 function OrderHistory() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (user) {
@@ -16,23 +18,20 @@ function OrderHistory() {
     const loadOrders = async () => {
         try {
             const response = await orderAPI.getOrders();
-            console.log('Orders API Response:', response); // Debug log
+            console.log('Orders API Response:', response);
 
-            // Handle different response structures
             let ordersData = [];
             if (response.data) {
                 if (Array.isArray(response.data)) {
                     ordersData = response.data;
                 } else if (response.data.results && Array.isArray(response.data.results)) {
-                    // Handle paginated response
                     ordersData = response.data.results;
                 } else if (typeof response.data === 'object') {
-                    // If it's a single object, wrap it in an array
                     ordersData = [response.data];
                 }
             }
 
-            console.log('Processed orders data:', ordersData); // Debug log
+            console.log('Processed orders data:', ordersData);
             setOrders(ordersData);
         } catch (error) {
             console.error('Error loading orders:', error);
@@ -65,7 +64,6 @@ function OrderHistory() {
         }
     };
 
-    // Safe array for rendering
     const ordersArray = Array.isArray(orders) ? orders : [];
 
     if (loading) {
@@ -73,6 +71,7 @@ function OrderHistory() {
             <div className="container orders-container">
                 <div className="loading-spinner">
                     <div className="spinner"></div>
+                    <p>Loading your orders...</p>
                 </div>
             </div>
         );
@@ -80,7 +79,15 @@ function OrderHistory() {
 
     return (
         <div className="container orders-container">
-            <h1 className="page-title">Order History</h1>
+            <div className="orders-header">
+                <h1 className="page-title">Your Orders</h1>
+                <button
+                    onClick={() => navigate('/')}
+                    className="continue-shopping-btn"
+                >
+                    Continue Shopping
+                </button>
+            </div>
 
             {!user ? (
                 <div className="empty-state">
@@ -88,7 +95,15 @@ function OrderHistory() {
                 </div>
             ) : ordersArray.length === 0 ? (
                 <div className="empty-state">
-                    <p>No orders found.</p>
+                    <h2>No Orders Yet</h2>
+                    <p>You haven't placed any orders yet. Start shopping to see your orders here!</p>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="auth-button"
+                        style={{ marginTop: '1rem' }}
+                    >
+                        Start Shopping
+                    </button>
                 </div>
             ) : (
                 <div className="orders-list">
@@ -98,7 +113,7 @@ function OrderHistory() {
                                 <div className="order-info">
                                     <h3>Order #{order.id}</h3>
                                     <p className="order-date">
-                                        Placed on {new Date(order.created_at).toLocaleDateString()}
+                                        Placed on {new Date(order.created_at).toLocaleDateString()} at {new Date(order.created_at).toLocaleTimeString()}
                                     </p>
                                 </div>
                                 <div className="order-total-container">
@@ -110,14 +125,16 @@ function OrderHistory() {
                             </div>
 
                             <div className="order-items">
-                                <h4>Items:</h4>
+                                <h4>Order Items:</h4>
                                 {order.order_items && order.order_items.map(item => (
                                     <div key={item.id} className="order-item">
-                                        <div>
+                                        <div className="order-item-details">
                                             <p className="item-title">{item.book?.title || 'Unknown Book'}</p>
-                                            <p className="item-author">Qty: {item.quantity}</p>
+                                            <p className="item-meta">
+                                                Quantity: {item.quantity} × ${item.price} each
+                                            </p>
                                         </div>
-                                        <p className="item-price">${item.price}</p>
+                                        <p className="item-subtotal">${(item.quantity * parseFloat(item.price)).toFixed(2)}</p>
                                     </div>
                                 ))}
                             </div>

@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
 import { cartAPI, bookAPI } from '../services/api';
+import { useAuth } from './AuthContext';
 
 const AppContext = createContext();
 
 const initialState = {
-    books: [], // Ensure this starts as an array
+    books: [],
     cart: null,
     loading: false,
     searchQuery: '',
@@ -16,11 +17,11 @@ const initialState = {
 };
 
 function appReducer(state, action) {
+    console.log('AppReducer - Action:', action.type, 'Payload:', action.payload);
     switch (action.type) {
         case 'SET_LOADING':
             return { ...state, loading: action.payload };
         case 'SET_BOOKS':
-            // Ensure we always set an array
             return {
                 ...state,
                 books: Array.isArray(action.payload) ? action.payload : []
@@ -59,50 +60,82 @@ function appReducer(state, action) {
 
 export function AppProvider({ children }) {
     const [state, dispatch] = useReducer(appReducer, initialState);
+    const { user } = useAuth();
+
+    console.log('AppProvider - Current state:', state);
+    console.log('AppProvider - User:', user);
 
     // Load books on component mount
     useEffect(() => {
         loadBooks();
-        loadCart();
     }, []);
+
+    // Load cart when user changes
+    useEffect(() => {
+        if (user) {
+            console.log('User changed, loading cart...');
+            loadCart();
+        } else {
+            console.log('No user, clearing cart');
+            dispatch({ type: 'SET_CART', payload: null });
+        }
+    }, [user]);
 
     const loadBooks = async (params = {}) => {
         dispatch({ type: 'SET_LOADING', payload: true });
         try {
             const response = await bookAPI.getBooks(params);
-            console.log('API Response:', response); // Debug log
+            console.log('Books API response:', response);
 
-            // Handle different response structures
             let booksData = [];
             if (response.data) {
                 if (Array.isArray(response.data)) {
                     booksData = response.data;
                 } else if (response.data.results && Array.isArray(response.data.results)) {
-                    // Handle paginated response
                     booksData = response.data.results;
                 } else if (typeof response.data === 'object') {
-                    // Handle case where response.data might be an object instead of array
                     booksData = Object.values(response.data);
                 }
             }
 
-            console.log('Processed books data:', booksData); // Debug log
             dispatch({ type: 'SET_BOOKS', payload: booksData });
         } catch (error) {
             console.error('Error loading books:', error);
-            // Set empty array on error
             dispatch({ type: 'SET_BOOKS', payload: [] });
         } finally {
             dispatch({ type: 'SET_LOADING', payload: false });
         }
     };
 
-    const loadCart = async () => {
+    const loadCart = async (params = {}) => {
+        if (!user) {
+            console.log('No user, skipping cart load');
+            return;
+        }
+
         try {
-            const response = await cartAPI.getCart();
+            console.log('Loading cart for user:', user.username);
+            const response = await cartAPI.getCart(params);
+            console.log('Cart API response:', response);
             dispatch({ type: 'SET_CART', payload: response.data });
         } catch (error) {
             console.error('Error loading cart:', error);
+            if (error.response?.status === 404) {
+                console.log('Cart not found, creating empty cart structure');
+                // Set empty cart structure
+                dispatch({
+                    type: 'SET_CART',
+                    payload: {
+                        id: null,
+                        items: [],
+                        total_price: '0.00',
+                        total_items: 0
+                    }
+                });
+            } else {
+                console.log('Other error, setting cart to null');
+                dispatch({ type: 'SET_CART', payload: null });
+            }
         }
     };
 
@@ -131,13 +164,33 @@ export function AppProvider({ children }) {
     };
 
     const addToCart = async (bookId, quantity = 1) => {
+        if (!user) {
+            throw new Error('Please login to add items to cart');
+        }
+
         try {
-            await cartAPI.addToCart(bookId, quantity);
-            await loadCart(); // Reload cart to get updated data
+            console.log('Adding to cart - Book ID:', bookId, 'Quantity:', quantity);
+            const response = await cartAPI.addToCart(bookId, quantity);
+            console.log('Add to cart response:', response);
+
+            // Reload the cart to get updated data
+            await loadCart();
             return true;
         } catch (error) {
             console.error('Error adding to cart:', error);
-            throw error;
+            console.error('Error response data:', error.response?.data);
+
+            // More specific error handling
+            if (error.response?.data?.cart) {
+                throw new Error('Cart issue: ' + error.response.data.cart[0]);
+            }
+            if (error.response?.data?.error) {
+                throw new Error(error.response.data.error);
+            }
+            if (error.response?.data?.detail) {
+                throw new Error(error.response.data.detail);
+            }
+            throw new Error('Failed to add book to cart');
         }
     };
 
