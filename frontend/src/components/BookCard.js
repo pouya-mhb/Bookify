@@ -1,10 +1,11 @@
-// src/components/BookCard.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 function BookCard({ book }) {
     const { addToCart } = useApp();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [adding, setAdding] = useState(false);
     const [quantity, setQuantity] = useState(1);
@@ -14,7 +15,14 @@ function BookCard({ book }) {
     };
 
     const handleAddToCart = async (e) => {
-        e.stopPropagation(); // Prevent card click when clicking the button
+        e.stopPropagation();
+
+        if (!user) {
+            navigate('/login', {
+                state: { from: window.location.pathname }
+            });
+            return;
+        }
 
         if (quantity < 1) return;
 
@@ -31,7 +39,7 @@ function BookCard({ book }) {
     };
 
     const handleQuantityChange = (e) => {
-        e.stopPropagation(); // Prevent card click when changing quantity
+        e.stopPropagation();
         setQuantity(parseInt(e.target.value) || 1);
     };
 

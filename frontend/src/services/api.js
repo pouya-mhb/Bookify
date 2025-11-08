@@ -24,25 +24,14 @@ api.interceptors.request.use(
     }
 );
 
-// Add a response interceptor to handle errors
+// Add a response interceptor to handle authentication errors
 api.interceptors.response.use(
-    (response) => {
-        console.log('API Response:', response); // Debug log
-        return response;
-    },
+    (response) => response,
     (error) => {
-        console.error('API Error:', error);
         if (error.response?.status === 401) {
-            console.error('Unauthorized access - please log in');
-        }
-        if (error.response?.status === 403) {
-            console.error('CSRF verification failed');
-        }
-        if (error.response?.status === 404) {
-            console.error('API endpoint not found');
-        }
-        if (error.response?.status === 500) {
-            console.error('Server error');
+            // Clear user data on unauthorized
+            localStorage.removeItem('user');
+            window.location.href = '/login';
         }
         return Promise.reject(error);
     }
@@ -65,12 +54,19 @@ function getCSRFToken() {
     return cookieValue;
 }
 
-// In your existing services/api.js
+export const authAPI = {
+    register: (userData) => api.post('/auth/register/', userData),
+    login: (credentials) => api.post('/auth/login/', credentials),
+    logout: () => api.post('/auth/logout/'),
+    getCurrentUser: () => api.get('/auth/current-user/'),
+};
+
 export const bookAPI = {
     getBooks: (params = {}) => api.get('/books/', { params }),
     getBook: (id) => api.get(`/books/${id}/`),
     searchBooks: (query) => api.get('/books/', { params: { search: query } }),
 };
+
 export const cartAPI = {
     getCart: () => api.get('/carts/'),
     addToCart: (bookId, quantity = 1) =>
