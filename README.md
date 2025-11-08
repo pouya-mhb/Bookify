@@ -1,13 +1,14 @@
 # 📚 BookStore API
 
-A simple Django REST API for managing books.  
+A simple Django + React BookStore project  
 This project is designed for **practicing software testing** in Python — including unit, integration, functional, regression, smoke, and API testing.
 
 ---
 
 ## 🚀 Features
 
-- Add, view, update, and delete books
+- Authentications
+- View, Add to cart, Order books
 - Filter books by author or publication year
 - REST API built with Django Rest Framework
 - Ready for automated testing with Pytest
