@@ -1,18 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { orderAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function OrderHistory() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
 
     useEffect(() => {
-        loadOrders();
-    }, []);
+        if (user) {
+            loadOrders();
+        }
+    }, [user]);
 
     const loadOrders = async () => {
         try {
             const response = await orderAPI.getOrders();
-            setOrders(response.data);
+            console.log('Orders API Response:', response); // Debug log
+
+            // Handle different response structures
+            let ordersData = [];
+            if (response.data) {
+                if (Array.isArray(response.data)) {
+                    ordersData = response.data;
+                } else if (response.data.results && Array.isArray(response.data.results)) {
+                    // Handle paginated response
+                    ordersData = response.data.results;
+                } else if (typeof response.data === 'object') {
+                    // If it's a single object, wrap it in an array
+                    ordersData = [response.data];
+                }
+            }
+
+            console.log('Processed orders data:', ordersData); // Debug log
+            setOrders(ordersData);
         } catch (error) {
             console.error('Error loading orders:', error);
             alert('Failed to load orders');
@@ -44,6 +65,9 @@ function OrderHistory() {
         }
     };
 
+    // Safe array for rendering
+    const ordersArray = Array.isArray(orders) ? orders : [];
+
     if (loading) {
         return (
             <div className="container orders-container">
@@ -58,13 +82,17 @@ function OrderHistory() {
         <div className="container orders-container">
             <h1 className="page-title">Order History</h1>
 
-            {orders.length === 0 ? (
+            {!user ? (
+                <div className="empty-state">
+                    <p>Please log in to view your orders.</p>
+                </div>
+            ) : ordersArray.length === 0 ? (
                 <div className="empty-state">
                     <p>No orders found.</p>
                 </div>
             ) : (
                 <div className="orders-list">
-                    {orders.map(order => (
+                    {ordersArray.map(order => (
                         <div key={order.id} className="order-card">
                             <div className="order-header">
                                 <div className="order-info">
@@ -83,10 +111,10 @@ function OrderHistory() {
 
                             <div className="order-items">
                                 <h4>Items:</h4>
-                                {order.order_items.map(item => (
+                                {order.order_items && order.order_items.map(item => (
                                     <div key={item.id} className="order-item">
                                         <div>
-                                            <p className="item-title">{item.book.title}</p>
+                                            <p className="item-title">{item.book?.title || 'Unknown Book'}</p>
                                             <p className="item-author">Qty: {item.quantity}</p>
                                         </div>
                                         <p className="item-price">${item.price}</p>
