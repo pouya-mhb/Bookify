@@ -72,7 +72,7 @@ class CartItemViewSet(viewsets.ModelViewSet):
             # Update quantity if item already exists
             cart_item.quantity += quantity
             if cart_item.quantity > book.stock:
-                raise serializers.ValidationError({
+                raise self.serializers.ValidationError({
                     'error': f'Cannot add more than {book.stock} items'
                 })
             cart_item.save()
