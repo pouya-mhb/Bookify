@@ -19,6 +19,7 @@ class Book(models.Model):
     author = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    stock = models.IntegerField(default=0)
     isbn = models.CharField(max_length=13, unique=True)
     published_date = models.DateField(null=True, blank=True)
 
