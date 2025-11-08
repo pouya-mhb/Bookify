@@ -1,6 +1,5 @@
 from datetime import datetime
 import requests
-from rest_framework import viewsets, status
 from rest_framework.decorators import api_view
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
@@ -10,6 +9,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.db import transaction
 from .models import Book, Cart, CartItem, Order, SearchHistory
 from .serializers import BookSerializer, CartSerializer, CartItemSerializer, OrderSerializer
+from django.contrib.auth import login, authenticate
+from django.contrib.auth.models import User
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
 
 class BookViewSet(viewsets.ModelViewSet):
     queryset = Book.objects.all()
@@ -204,3 +207,81 @@ def search_books(request):
                     correct_published_date = None
 
     return Response(books, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def register(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+    email = request.data.get('email')
+
+    if not username or not password:
+        return Response(
+            {'error': 'Username and password required'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if User.objects.filter(username=username).exists():
+        return Response(
+            {'error': 'Username already exists'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    user = User.objects.create_user(username=username, password=password, email=email)
+    login(request, user)
+
+    return Response({
+        'message': 'User created successfully',
+        'user': {
+            'id': user.id,
+            'username': user.username,
+            'email': user.email
+        }
+    })
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def login_view(request):
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    user = authenticate(request, username=username, password=password)
+
+    if user is not None:
+        login(request, user)
+        return Response({
+            'message': 'Login successful',
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email
+            }
+        })
+    else:
+        return Response(
+            {'error': 'Invalid credentials'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+@api_view(['POST'])
+def logout_view(request):
+    from django.contrib.auth import logout
+    logout(request)
+    return Response({'message': 'Logout successful'})
+
+@api_view(['GET'])
+def current_user(request):
+    if request.user.is_authenticated:
+        return Response({
+            'user': {
+                'id': request.user.id,
+                'username': request.user.username,
+                'email': request.user.email
+            }
+        })
+    else:
+        return Response(
+            {'error': 'Not authenticated'},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
